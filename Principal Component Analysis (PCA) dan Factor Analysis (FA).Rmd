@@ -1,0 +1,305 @@
+---
+title: "Principal Component Analysis (PCA) dan Factor Analysis (FA) pada Data Kanker Payudara "
+author: "Ismatul Izza(23031554226) , Fherenilla Anandianus (23031554205)"
+date: "2025-03-22"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    toc_float: true
+    theme: readable
+---
+
+# BAB  Pendahuluan 
+## Latar Belakang 
+  Kanker payudara adalah penyakit yang disebabkan oleh pertumbuhan sel payudara yang tumbuh tak terkendali dan membentuk tumor jika tidak ditangani dapat keseluruh Tubuh dan berakibat fatal ( WHO, 2024).Tercatat pada 2022 ada 2.3 juta perempuan yang terdiagnosis kanker payudara dan  670.000 diantaranya meninggal di seluruh dunia ( WHO, 2024). Berdasarkan Global Cancer Observatory, di Indonesia, kanker payudara menjadi jenis kanker yang paling umum terjadi, dengan jumlah kasus baru mencapai 65.858 (16,6%) dari total 396.914 kasus baru kanker pada tahun 2020 ( Winasis A., 2024 ).
+     Dengan meningkatnya jumlah kasus kanker payudara diperlukan metode yang dapat membantu dalam menganalisis faktor risiko ,diagnosis dini, dan pengelompokan karakteristik secara lebih efektif. Salah satu metode yang digunakan dalam diagnosis kanker payudara adalah Fine needle Aspiration (FNA). Fine needle Aspiration (FNA) merupakan prosedur sederhana untuk diagnosis sitologi cepat pada lesi payudara (Tagar E., 2024). Dataset Wisconsin Breast Cancer Database (WBCD) yang tersedia di UCI Machine Learning Repository merupakan kumpulan data hasil ekstraksi fitur dari citra digitalisasi FNA. Fitur-fitur ini merepresentasikan karakteristik inti sel yang terdapat dalam gambar dan digunakan untuk membedakan antara tumor jinak dan ganas.
+    Untuk meningkatkan akurasi klasifikasi kanker payudara Principal Component Analysis (PCA) dan exploratory  Factor Analysis (EFA) dapat digunakan sebagai teknik analisis data.Principal Component Analysis (PCA) adalah metode statistika untuk mereduksi tabel data kasus per variable menjadi fitur-fitur Penting yang disebut komponen utama ( Greencare M., 2022).Sementara itu Exploratory Factor Analysis adalah teknik statistik yang digunakan untuk mengungkap struktur yang mendasari dalam sekumpulan besar variabel. Metode ini bertujuan untuk mendeteksi hubungan mendasar di antara variabel yang diukur dengan mengidentifikasi konstruk laten yang menjelaskan interkoneksinya(Rijukure , 2024).
+       Melalui penelitian ini, PCA dan FA akan diterapkan pada dataset kanker payudara dari UCI untuk meningkatkan interpretabilitas data dan akurasi model klasifikasi, guna mendukung pengambilan keputusan dalam diagnosis kanker payudara.
+
+
+
+
+# BAB  Metodologi Penelitian 
+## DATA 
+    Dataset yang digunakan dalam penelitian ini berasal dari University of Wisconsin Hospitals, Madison, yang dikumpulkan oleh Dr. William H. Wolberg. Data ini terdiri dari gambar-gambar digital jarum halus (FNA) dari payudara pasien, yang kemudian dianalisis. Dataset ini kami akses melalui UCI Machine Learning. Berikut link untuk mengakses dataset tersebut: https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic . 
+
+
+```{r}
+data <- read.csv('/cloud/python/FAanalysis/brest_cancer_uci.csv')
+print(data)
+
+```
+## Variabel 
+  Variabel yang digunakan berasal dari jaringan payudara pasien meliputi:
+1. radius1, radius2, radius3
+2. texture1, texture2, texture3
+3. perimeter1, perimeter2, perimeter3
+4. area1,area2, area3
+5. smoothness1, smoothness2, smoothness3
+6. compactness1, compactness2, compactness3
+7. concavity1, concavity2, concavity3
+8. concave_points1, concave_points2, concave_points3
+9. symmetry1, symmetry2, symmetry3
+10. fractal_dimension1, fractal_dimension2, fractal_dimension3
+
+
+preprocessing 
+
+```{r}
+sum(is.na(data))
+p <- ncol(data)
+```
+# BAB  Pembahasan 
+## Statistika Deskriptiv 
+
+```{r}
+summary(data)
+
+library(psych)
+describe(data)
+```
+  
+
+```{r}
+par(mfrow = c(1, 1))  
+for(i in 1:ncol(data)) {
+  hist(data[[i]],
+       main = paste("Histogram of", names(data)[i]),
+       xlab = names(data)[i],
+       col = "lightgreen",
+       border = "white")
+}
+par(mfrow = c(1,1)) 
+
+```
+  Berdasarkan hasil  statistik deskriptif, kami menemukan bahwa fitur-fitur terkait ukuran (radius, perimeter, area) menunjukkan variabilitas sangat tinggi, sejalan dengan kenyataan tumor ganas cenderung memiliki ukuran yang besar dan heterogen.
+  Distribusi sebagian besar fitur menceng ke kanan (right-skewed), dengan nilai-nilai mean yang lebih besar daripada median, menunjukkan adanya beberapa kasus ekstrem dengan nilai fitur yang jauh lebih tinggi.
+  
+## Asumsi Sebelum Reduksi 
+
+```{r}
+library(psych)
+r <- cor(data)
+KMO(r)
+
+bartlett.test(data)
+```
+Dua uji utama yang digunakan adalah Kaiser-Meyer-Olkin
+
+1. (KMO) Test dan Bartlett’s Test of Sphericity.
+Hasil analisis menunjukan hasil Overall MSA( Masure of                  Sampling Adequacy ) = 0.83 yang mengindikasikan bahwa   data memiliki    kecukupan Sampel yang baik dan dapat dilakukan analisis lebih lanjut.
+
+2. Bartlett’s Test of SphericityHasil 
+uji Bartlett menunjukkan K-squared = 208933, df = 29, p-value <     2.2e-16, yang berarti bahwa matriks korelasi antar variabel signifikan  secara statistik (p < 0.05) dan tidak berbentuk matriks identitas. Hal ini menunjukkan bahwa terdapat hubungan antar variabel yang cukup kuat untuk dilakukan PCA dan FA.
+
+berdasarkan Hasil analisis maka asumsi PCA terpenuhi karena nilai KMO cukup tinggi dan juga FA terpenuhi karena korelasi cukup untuk membentuk faktor-faktor laten.
+
+## PCA (Principal Component Analysis)
+
+### Nilai Eigen 
+
+```{r}
+scale_data = scale(data)
+r = cov(scale_data)
+pc <- eigen(r)
+print(pc$values)
+```
+Karena nilai eigen pada beberapa variabel sangat kecil yakni <0,1 maka dilakukan reduksi variabel. Reduksi variabel ini dilakukan untuk mempermudah dalam proses analisis dan mengetahui variabel mana saja yang berpengaruh, dengan nilai eigen yang sangat kecil bisa dipastikan bahwa variabel tersebut tidak berpengaruh signifikan. 
+Reduksi dilakukan bagi variabel dengan eigen value <0,1. Sehingga variabel yang tersisa adalah concave_points1 fractal_dimension1 texture2 texture3 smoothness1 symmetry3 fractal_dimension3 smoothness2 concavity2 symmetry1 concavity2 compactness3 concave_points2 compactness2.
+
+
+```{r}
+pc <- eigen(r)
+eigenvalues <- pc$values
+eigenvectors <- pc$vectors
+
+selected_components <- which(eigenvalues >= 0.1)
+
+# Hitung kontribusi setiap variabel asli terhadap komponen utama yang dipilih. Kontribusi dihitung berdasarkan nilai absolut dari eigenvectors
+contributions <- abs(eigenvectors[, selected_components])
+
+# Pilih variabel asli yang memiliki kontribusi besar. 
+selected_variables <- apply(contributions, 2, which.max)
+
+# Ambil nama variabel asli yang terpilih
+selected_variable_names <- colnames(data)[selected_variables]
+
+# Subset data asli dengan variabel yang terpilih
+reduced_data <- data[, selected_variable_names]
+
+# Simpan data yang telah direduksi ke dalam file CSV
+write.csv(reduced_data, file = "breast_cancer_reduction.csv", row.names = FALSE)
+
+# Cetak pesan konfirmasi
+cat("Data yang telah direduksi telah disimpan dalam file 'breast_cancer_reduction.csv'\n")
+cat("Variabel yang dipilih:", selected_variable_names, "\n")
+```
+```{r}
+data2 <- read.csv('breast_cancer_reduction.csv')
+print(data2)
+```
+### Asumsi setelah Reduksi 
+
+```{r}
+r2 <- cor(data2)
+KMO(r2)
+
+bartlett.test(data2)
+
+```
+Asumsi setelah reduksi variabel menunjukan nilai KMO yang dibawah 0,6  Maka dari itu tidak dapat dilakukan Factor analysis dengan Maximum likelihood( ML) karena  korelasi antar variabel lemah dan tidak cocok untuk FA dengan ML.
+
+
+### Parallel Analysis
+
+```{r}
+scale_data2 = scale(data2)
+pa_result <- fa.parallel(scale_data2, fa = "fa", n.iter = 100, show.legend = TRUE, main = "Parallel Analysis")
+```
+  Berdasarkan hasil parallel analysis, disebutkan bahwa jumlah pc yang disarankan yakni 6. Kami menggunakan pendekatan FA dalam menentukan jumlah pc untuk mempermudah proses analisis dan masih tetap memperhatikan eigenvalues. 
+  Berdasarkan plot parallel analysis nilai yang ideal adalah 6, tetapi bisa dilihat bahwa titik pada factor number 4, 5, dan 6 tidak terlalu berbeda. Sehingga kami memilih nilai pc adalah 4 karena setelah nilai 4 penurunan yang terjadi sangat minim dan tidak signifikan. 
+
+### Hasil dan Pembahasan PCA 
+
+```{r}
+pca_result <- principal(scale_data2, nfactors = 4, rotate = "none")
+print(pca_result)
+```
+Dari hasil PCA, terdapat 4 komponen yakni PC1, PC2, PC3, dan PC4. Dari total varians keempat PC yakni 78% menunjukkan bahwa hasil sudah cukup baik karena sudah bisa menangkap sebagian besar informasi dalam data. 
+
+```{r}
+print(pca_result$loadings)
+
+```
+1.PC1 
+Berisi variabel yang paling banyak, yakni 6 variabel dan menjelaskan 44%  dari variansi data yaitu compactness2, compactness3, concavity2, concavity2.1, concav_points2, fractal_dimension3. PC1 merepresentasikan sejauh mana bentuk sel tidak teratur dan kompleks. Variabel-variabel ini berkaitan dengan tingkat kekasaran, cekungan, dan kejanggalan bentuk pada tepi sel. Nilai tinggi pada PC1 dapat diasosiasikan dengan kemungkinan keganasan (malignant) karena sel kanker cenderung memiliki bentuk tidak beraturan dan tepi yang tidak halus.
+
+2.PC2
+Berisi 3 variabel yaitu texture2, smoothness2, dan symmetry3. PC2 mencerminkan kualitas tekstur dan keseimbangan bentuk sel. Variabel texture dan smoothness berhubungan dengan kerataan permukaan dan distribusi pola dalam citra, sedangkan symmetry berkaitan dengan kesimetrian bentuk sel. Nilai ekstrem pada PC2 mungkin menunjukkan anomali dalam pola pertumbuhan sel.
+
+3.PC3
+Berisi 3 variabel yaitu fractal_dimension1, smoothness2, dan texture3.  Komponen ini menyiratkan tingkat kerumitan permukaan sel secara mikroskopik. Dimensi fractal_dimension mengukur seberapa kompleks struktur sel di bawah pembesaran. Dalam konteks klinis, semakin tinggi kompleksitas fraktal, bisa jadi mengindikasikan perubahan patologis pada struktur jaringan.
+
+4.PC4
+Berisi 2 variabel yakni texture2 dan texture3. PC4 menangkap informasi murni mengenai variasi tekstur dalam citra sel. Ini menunjukkan bahwa beberapa aspek tekstur bersifat independen dari bentuk dan ukuran, namun tetap penting dalam membedakan antara jaringan sehat dan jaringan abnormal.
+
+
+
+
+
+```{r}
+
+library(FactoMineR)
+p<-4
+pca_result <- PCA(scale_data2, 
+                  scale.unit = TRUE, 
+                  graph = FALSE, 
+                  ncp=p)
+```
+
+### Rangkuman  PCA 
+
+```{r}
+
+pca_result$eig          # vs print(cumvar)
+pca_result$svd$V        # vs pc$vectors
+pca_result$ind['coord'] # vs head(scores)
+
+```
+### Biplot 
+```{r}
+
+library(factoextra)
+
+# Buat biplot
+fviz_pca_biplot(pca_result, 
+                geom.ind = "point",  # Tampilkan individu sebagai titik
+                addEllipses = TRUE) 
+
+```
+
+### Corelation circel  
+```{r}
+# Instal dan muat paket factoextra (jika belum)
+
+library(factoextra)
+
+# Buat plot kontribusi variabel
+contrib_circle <- fviz_pca_var(pca_result, 
+                               col.var = "contrib",  # Warna berdasarkan kontribusi
+                               gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),  # Gradien warna
+                               repel = TRUE) +  # Hindari tumpang tindih label
+  ggtitle("Kontribusi Variabel")  # Judul plot
+
+# Tampilkan plot
+plot(contrib_circle)
+```
+## Faktor Analisis
+### Pembahasan 
+```{r}
+sum(is.na(scale_data2))  # Cek nilai NA
+sum(is.nan(scale_data2))  # Cek nilai NaN
+sum(is.infinite(scale_data2))  # Cek nilai Inf
+```
+### Nilai eigen 
+```{r}
+r <- cor(scale_data2)  # Hitung matriks korelasi
+eigen(r)$values  # Periksa eigenvalues
+```
+Karena hasil uji setelah reduksi tidak memenuhi asumsi pada KMO harus≥ 0.6 yaitu nilai KMO setelah direduksi adalah 0,5. Maka dari itu tidak dapat dilakukan Factor analysis dengan Maximum likelihood( ML) karena  korelasi antar variabel lemah dan tidak cocok untuk FA dengan ML. 
+Maka dari itu menggunakan metode Principal Axis Factoring(PA) pada FA untuk loading. 
+Nilai eigen value paling dominan adalah yaitu 6.09, 2.05 , 1.47 , 1.34 ini berarti empat faktor pertama yang menjelaskan sebagian besar varians dalam data.
+
+### Interpretasi hasil FA  
+
+```{r}
+
+fa_result <- fa(r = scale_data2, 
+                nfactors = 4,  # Jumlah faktor yang ingin diekstrak
+                rotate = "varimax",  # Metode rotasi
+                fm = "pa")  # Metode ekstraksi (maximum likelihood)
+
+# Tampilkan hasil analisis faktor
+print(fa_result)
+
+```
+Analisis faktor yang dilakukan menggunakan metode Principal Axis Factoring (PA) dengan rotasi Varimax menghasilkan empat faktor utama yang menjelaskan 71% dari total varians data. Namun, dari hasil uji kecocokan model, analisis ini menunjukkan beberapa kelemahan. Nilai RMSEA sebesar 0.732 menunjukkan bahwa model tidak memiliki kecocokan yang baik, sementara Tucker Lewis Index (TLI) negatif (-0.503) menandakan kurangnya keandalan dalam faktor yang terbentuk. Chi-Square test menunjukkan signifikansi yang sangat tinggi (p < 0), yang mengindikasikan model kurang sesuai dengan data.Hal ini disebabkan karena FA tidak memenuhi asumsi. 
+
+
+
+```{r}
+load <- fa_result$loadings
+
+plot(load[,c(1,3)],type="n") # set up plot
+text(load[,c(1,3)],labels=names(data),cex=.7)
+
+fa.diagram(load)
+
+
+```
+Menunjukan variabel dengan empat faktor laten (PA1, PA2, PA3, dan PA4)berdasarkan factor loading
+1.PA 1 memiliki hubungan kuat dengan concavity2, concavity2.1, concave_points2, dan compactness2  menunjukan keterkaitan terhadap Keharusan Struktural dan Morfologi Sel Tumor. pada data FNA PA1 sejauh mana batas sel tumor melengkung ke dalam dan seberapa padat bentuk selnya. Faktor ini dapat dikaitkan dengan keagresifan tumor.
+
+2.PA2 memiliki factor loadings sekitar 0.7 - 0.8 terhadap fractal_dimension3, compactness3, symmetry3, fractal_dimension1, dan symmetry1, maka faktor ini kemungkinan besar terkait dengan kompleksitas dan simetri sel tumor dalam dataset FNA kanker payudara.Faktor ini bisa menjadi indikator tingkat keganasan.
+
+3.PA3 dan PA4 memiliki variabel yang terkait dengan smoothness dan texture, maka faktor-faktor ini kemungkinan besar berhubungan dengan karakteristik permukaan dan pola tekstur sel tumor.
+
+Jadi Analisis faktor di atas  mengelompokkan variabel berdasarkan karakteristik morfologi sel tumor, yang berhubungan dengan keganasan tumor.
+
+# BAB Kesimpulan 
+  Berdasarkan analisis yang dilakukan, baik Principal Component Analysis (PCA) maupun Factor Analysis (FA) memberikan wawasan yang berharga tentang struktur data dan karakteristik morfologi sel tumor. PCA berhasil mereduksi dimensi data dengan mempertahankan 78% varians total, menghasilkan empat komponen utama (PC1, PC2, PC3, PC4) yang mencerminkan aspek-aspek penting seperti bentuk sel yang tidak teratur, kualitas tekstur, kompleksitas permukaan, dan variasi tekstur. Keempat komponen ini memberikan interpretasi yang jelas dan dapat digunakan untuk membedakan antara sel normal dan sel kanker, terutama dalam konteks keganasan tumor. Hasil PCA juga menunjukkan kecocokan yang baik dengan data, seperti yang terlihat dari nilai RMSR yang rendah dan proporsi varians yang tinggi.
+
+  Di sisi lain, FA menghasilkan empat faktor utama (PA1, PA2, PA3, PA4) yang menjelaskan 71% varians total. Faktor-faktor ini mengelompokkan variabel berdasarkan karakteristik morfologi sel tumor, seperti keharusan struktural, kompleksitas, simetri, dan tekstur. Namun, model FA memiliki kelemahan dalam kecocokan dengan data, seperti nilai RMSEA yang tinggi dan TLI yang negatif, menunjukkan bahwa model kurang sesuai. Meskipun demikian, FA tetap memberikan gambaran tentang hubungan antara variabel-variabel morfologi sel tumor yang dapat digunakan untuk memahami tingkat keganasan tumor.
+
+  Secara keseluruhan, PCA lebih unggul dalam hal kecocokan model dan kemudahan interpretasi, sementara FA memberikan wawasan tambahan tentang hubungan laten antara variabel. Untuk analisis lebih lanjut, PCA direkomendasikan karena hasilnya lebih stabil dan dapat diandalkan. Namun, FA tetap dapat digunakan sebagai pendekatan alternatif jika peneliti ingin mengeksplorasi hubungan laten antara variabel, meskipun perlu dilakukan perbaikan model atau pertimbangan metode lain yang lebih sesuai dengan karakteristik data. Kedua metode ini saling melengkapi dalam memberikan pemahaman yang lebih mendalam tentang karakteristik morfologi sel tumor dan dapat digunakan untuk mendukung diagnosis dan analisis klinis terkait kanker payudara
+
+
+# Daftar Pustaka 
+
+World Health Organization: WHO, “Breast Cancer,” World Health  Organization: WHO, 13 March 2024 <https://www.who.int/news-room/fact-sheets/detail/breast-cancer> [accessed 23 March 2025] 
+Agung Winasis, and Ratna Djuwita, “Obesitas Dan Kanker Payudara : Literature Review,” Media Publikasi Promosi Kesehatan Indonesia (MPPKI), 6.8 (2023), pp. 1501–8, doi:10.56338/mppki.v6i8.3501 
+Tagar, Esteem, James Kpolugbo, Afokeoghene G. Tagar, Ehiremhen Ozah, Lucky A. Ehiagwina, and Orume Enegbuya, “Fine Needle Aspiration in the Evaluation of Patients with Suspected Breast Cancer in a Suburban Nigerian Teaching Hospital: A Five-Year Review,” Journal of Breast Cancer Research, Volume 4.Issue 1 (2024), pp. 11–16, doi:10.46439/breastcancer.4.022 
+Greenacre, Michael, Patrick J. F. Groenen, Trevor Hastie, Alfonso Iodice D’Enza, Angelos Markos, and Elena Tuzhilina, “Principal Component Analysis,” Nature Reviews Methods Primers, 2.1 (2022), pp. 1–21, doi:10.1038/s43586-022-00184-w 
+Rijkure, Astrida, “Use of Multifactor Statistical, Exploratory Factor Analysis (EFA) in Port  Efficiency Assessment Methods,” in Transport Means 2024. Proceedings of the 28th International Scientific Conference (KTU leidykla "Technologija„, 2024) <https://doi.org/10.5755/e01.2351-7034.2024.p793-798> [accessed 23 March 2025] 
